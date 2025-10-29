@@ -1,0 +1,48 @@
+# ~/Sites/bin/wp-del
+#!/usr/bin/env bash
+# Usage: wp-del <project>
+# Полностью удаляет DDEV-проект: контейнеры, тома (БД), сети и папку ~/Sites/<project>.
+
+set -euo pipefail
+
+PROJECT="${1:-}"
+FLAG="${2:-}"
+BASE_DIR="${HOME}/Sites"
+PROJ_DIR="${BASE_DIR}/${PROJECT}"
+
+if [[ -z "${PROJECT}" ]]; then
+  echo "Usage: wp-del <project>"
+  exit 64
+fi
+
+
+# Проверим, известен ли проект DDEV
+PROJECT_EXISTS_IN_DDEV=$(ddev list 2>/dev/null | awk 'NR>1{print $1}' | grep -qx "${PROJECT}" && echo "yes" || echo "no")
+
+echo "→ Удаление проекта '${PROJECT}'..."
+
+# 1) Остановить/удалить в DDEV (с БД/томами)
+if [[ "${PROJECT_EXISTS_IN_DDEV}" == "yes" ]]; then
+  echo "  - Остановка и удаление через ddev (контейнеры, сети, тома)…"
+  ddev stop "${PROJECT}" >/dev/null 2>&1 || true
+  # Пытаемся удалить по имени; если не получилось, пробуем из папки проекта
+  if ! ddev delete -Oy "${PROJECT}" >/dev/null 2>&1; then
+    if [[ -d "${PROJ_DIR}" ]]; then
+      ( cd "${PROJ_DIR}" && ddev delete -Oy ) || true
+    fi
+  fi
+else
+  # Если ddev не знает проект, но папка есть — подстрахуемся удалением внутри папки
+  if [[ -d "${PROJ_DIR}/.ddev" ]]; then
+    echo "  - Проект не найден в ddev list, пробую ddev delete из каталога…"
+    ( cd "${PROJ_DIR}" && ddev delete -Oy ) || true
+  fi
+fi
+
+# 2) Удалить папку с кодом
+if [[ -d "${PROJ_DIR}" ]]; then
+  echo "  - Удаление каталога ${PROJ_DIR}…"
+  rm -rf "${PROJ_DIR}"
+fi
+
+echo "✓ Готово: '${PROJECT}' удалён полностью."

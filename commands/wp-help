@@ -1,0 +1,79 @@
+# ~/Sites/bin/wp-help
+#!/usr/bin/env bash
+# Быстрая справка по моим WP/DDEV инструментам
+
+set -euo pipefail
+
+PROJECT="${1:-}"
+
+# Если указан конкретный проект - показываем его сводку
+if [[ -n "${PROJECT}" ]]; then
+  echo "→ Сводка по проекту '${PROJECT}':"
+  echo
+  
+  # Проверяем, существует ли проект в DDEV
+  if ddev list 2>/dev/null | grep -q "^│ ${PROJECT} "; then
+    # Переходим в папку проекта и показываем describe
+    if [[ -d "${HOME}/Sites/${PROJECT}" ]]; then
+      cd "${HOME}/Sites/${PROJECT}"
+      ddev describe || true
+    else
+      echo "✗ Папка проекта не найдена: ${HOME}/Sites/${PROJECT}"
+    fi
+  else
+    echo "✗ Проект '${PROJECT}' не найден в DDEV"
+    echo "Доступные проекты:"
+    ddev list 2>/dev/null | grep "^│ " | grep -v "Router" | awk '{print "  - " $2}' || echo "  (нет активных проектов)"
+  fi
+  exit 0
+fi
+
+# Показываем общую справку и список проектов
+cat <<'TXT'
+══════════════════════════════════════════════════════════════════════
+ WP LOCAL TOOLBOX (DDEV + OrbStack)
+
+         Команды:
+           wp-new <project> [Title]      — создать WP-проект (ru_RU), БД=db,
+                                           wildcard *.<project>.ddev.site, admin/admin
+           wp-del <project> --force      — ПОЛНОЕ удаление проекта (контейнеры/БД/тома/папка)
+           wp-help [project]              — эта справка или сводка по проекту
+           wp-plugins [project] [opts]   — управление плагинами (--list, --keys, --help)
+
+ DDEV базовые:
+   ddev start / stop / restart
+   ddev describe                  — показать URL-ы (сайт, phpMyAdmin, Mailpit)
+   ddev ssh                       — зайти в web-контейнер
+   ddev wp <cmd>                 — wp-cli (например: ddev wp plugin list)
+   ddev xdebug enable|disable     — включить/выключить Xdebug
+   ddev mailpit                   — открыть UI почтового ловца
+   ddev logs -s web               — логи веб-сервера
+
+ Полезное:
+   Сайт:       https://<project>.ddev.site
+   Поддомены:  https://ANY.<project>.ddev.site
+   PhpMyAdmin: https://<project>.ddev.site:8037
+   Mailpit:    https://<project>.ddev.site:8026
+
+ Быстрые WP-CLI:
+   ddev wp plugin install query-monitor --activate
+   ddev wp theme install twentytwentyfour --activate
+   ddev wp search-replace 'https://old.tld' 'https://<project>.ddev.site' --all-tables
+
+══════════════════════════════════════════════════════════════════════
+TXT
+
+echo
+echo "→ Активные DDEV проекты:"
+ddev list 2>/dev/null | grep "^│ " | grep -v "Router" | grep -v "NAME" | awk '{print "  - " $2 " (" $3 ")"}' | grep -v "  - │" || echo "  (нет активных проектов)"
+
+echo
+echo "→ Проекты в ~/Sites:"
+ls -1 "${HOME}/Sites" 2>/dev/null | grep -v '^\.' | sed 's/^/  - /' || echo "  (папка Sites пуста)"
+
+# Если находимся внутри проекта — покажем describe
+if [[ -f ".ddev/config.yaml" ]]; then
+  echo
+  echo "→ Похоже, вы внутри DDEV-проекта. Краткая сводка:"
+  ddev describe || true
+fi

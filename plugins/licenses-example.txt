@@ -1,0 +1,29 @@
+# ПРИМЕР: Лицензионные ключи для плагинов
+# Скопируйте этот файл в licenses.txt и заполните реальными ключами
+
+# Rank Math SEO (Pro версия)
+seo-by-rank-math=RM-1234567890abcdef1234567890abcdef
+
+# WP Super Cache (Pro версия)  
+wp-super-cache=WSC-abcdef1234567890abcdef1234567890
+
+# Elementor Pro
+elementor-pro=ELT-1234567890abcdef1234567890abcdef
+
+# WPML
+wpml=WPM-abcdef1234567890abcdef1234567890
+
+# WooCommerce Extensions
+woocommerce-subscriptions=WCS-1234567890abcdef1234567890abcdef
+woocommerce-memberships=WCM-abcdef1234567890abcdef1234567890
+
+# Другие популярные плагины с лицензиями
+gravityforms=GF-1234567890abcdef1234567890abcdef
+wp-rocket=WPR-abcdef1234567890abcdef1234567890
+backupbuddy=BB-1234567890abcdef1234567890abcdef
+
+# Инструкции:
+# 1. Замените примеры ключей на ваши реальные лицензионные ключи
+# 2. Раскомментируйте строки с нужными плагинами (уберите #)
+# 3. Сохраните файл как licenses.txt
+# 4. Добавьте licenses.txt в .gitignore для безопасности

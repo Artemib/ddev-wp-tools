@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Удаление WP Tools из системы
+# Usage: ./uninstall-wp-tools
+
+set -euo pipefail
+
+log() { printf "➡ %s\n" "$*"; }
+ok()  { printf "✓ %s\n" "$*"; }
+err() { printf "✗ %s\n" "$*" >&2; }
+
+echo "══════════════════════════════════════════════════════════════════════"
+echo " WP TOOLS UNINSTALLER"
+echo "══════════════════════════════════════════════════════════════════════"
+echo
+
+# Определяем shell профиль
+if [[ "${SHELL}" == *"zsh"* ]]; then
+  PROFILE="${HOME}/.zshrc"
+elif [[ "${SHELL}" == *"bash"* ]]; then
+  PROFILE="${HOME}/.bashrc"
+else
+  PROFILE="${HOME}/.profile"
+fi
+
+log "Удаляю WP Tools из системы..."
+
+# Создаем backup
+if [[ -f "${PROFILE}" ]]; then
+  cp "${PROFILE}" "${PROFILE}.backup.$(date +%Y%m%d_%H%M%S)"
+  log "Создан backup: ${PROFILE}.backup.$(date +%Y%m%d_%H%M%S)"
+fi
+
+# Удаляем записи wp-tools из профиля
+if [[ -f "${PROFILE}" ]]; then
+  # Удаляем строки с wp-tools
+  sed -i '' '/wp-tools/d' "${PROFILE}"
+  
+  # Удаляем пустые строки и комментарии WP Tools
+  sed -i '' '/^# WP Tools$/d' "${PROFILE}"
+  sed -i '' '/^$/N;/^\n$/d' "${PROFILE}"
+  
+  log "Удалены записи wp-tools из ${PROFILE}"
+else
+  log "Файл ${PROFILE} не найден"
+fi
+
+log "Очищаю PATH в текущей сессии..."
+
+# Удаляем wp-tools из текущего PATH
+export PATH=$(echo $PATH | tr ':' '\n' | grep -v "wp-tools" | tr '\n' ':' | sed 's/:$//')
+
+# Дополнительная очистка - удаляем Sites/bin тоже
+export PATH=$(echo $PATH | tr ':' '\n' | grep -v "Sites/bin" | tr '\n' ':' | sed 's/:$//')
+
+# Финальная очистка - принудительно удаляем wp-tools
+export PATH=$(echo $PATH | tr ':' '\n' | grep -v "wp-tools" | tr '\n' ':' | sed 's/:$//')
+
+# Последняя попытка - полная очистка PATH
+export PATH="/Users/artem/.orbstack/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
+
+# Дополнительная очистка - удаляем Sites/bin тоже
+export PATH=$(echo $PATH | tr ':' '\n' | grep -v "Sites/bin" | tr '\n' ':' | sed 's/:$//')
+
+# Финальная очистка - принудительно удаляем wp-tools
+export PATH=$(echo $PATH | tr ':' '\n' | grep -v "wp-tools" | tr '\n' ':' | sed 's/:$//')
+
+# Последняя попытка - полная очистка PATH
+export PATH="/Users/artem/.orbstack/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
+
+log "Проверяю результат..."
+
+# Проверяем, что пути удалены
+if echo $PATH | tr ':' '\n' | grep -q "wp-tools"; then
+  err "Пути wp-tools все еще в PATH"
+else
+  ok "Пути wp-tools удалены из PATH"
+fi
+
+# Проверяем, что команды недоступны
+if command -v wp-help >/dev/null 2>&1; then
+  err "Команды wp-tools все еще доступны"
+else
+  ok "Команды wp-tools недоступны"
+fi
+
+echo
+ok "Удаление завершено!"
+echo
+echo "Что было сделано:"
+echo "  - Удалены записи wp-tools из ${PROFILE}"
+echo "  - Очищен PATH в текущей сессии"
+echo "  - Создан backup профиля"
+echo
+echo "⚠️  ВАЖНО: Для полного применения изменений:"
+echo "  - Перезапустите терминал"
+echo "  - Или выполните: source ${PROFILE}"
+echo
+echo "Для восстановления из backup:"
+echo "  cp ${PROFILE}.backup.* ${PROFILE}"
+echo
+echo "Для полного удаления пакета:"
+echo "  rm -rf ~/Sites/wp-tools/"

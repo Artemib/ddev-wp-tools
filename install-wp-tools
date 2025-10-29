@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Установка WP Tools для DDEV
+# Usage: ./install-wp-tools
+
+set -euo pipefail
+
+TOOLS_DIR="${HOME}/Sites/wp-tools"
+COMMANDS_DIR="${TOOLS_DIR}/commands"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+log() { printf "➡ %s\n" "$*"; }
+ok()  { printf "✓ %s\n" "$*"; }
+err() { printf "✗ %s\n" "$*" >&2; }
+
+echo "══════════════════════════════════════════════════════════════════════"
+echo " WP TOOLS INSTALLER"
+echo "══════════════════════════════════════════════════════════════════════"
+echo
+
+# Проверяем, что мы в правильной директории
+if [[ ! -f "${SCRIPT_DIR}/commands/wp-new" ]]; then
+  err "Команды не найдены в текущей директории"
+  exit 1
+fi
+
+log "Устанавливаю WP Tools..."
+
+# Создаем директории если их нет
+if [[ ! -d "${TOOLS_DIR}" ]]; then
+  log "Создаю директорию ${TOOLS_DIR}"
+  mkdir -p "${TOOLS_DIR}"
+fi
+
+if [[ ! -d "${COMMANDS_DIR}" ]]; then
+  log "Создаю директорию ${COMMANDS_DIR}"
+  mkdir -p "${COMMANDS_DIR}"
+fi
+
+# Копируем команды
+log "Копирую команды в ${COMMANDS_DIR}"
+
+cp "${SCRIPT_DIR}/commands/wp-new" "${COMMANDS_DIR}/" 2>/dev/null || true
+cp "${SCRIPT_DIR}/commands/wp-del" "${COMMANDS_DIR}/" 2>/dev/null || true
+cp "${SCRIPT_DIR}/commands/wp-help" "${COMMANDS_DIR}/" 2>/dev/null || true
+cp "${SCRIPT_DIR}/commands/wp-plugins" "${COMMANDS_DIR}/" 2>/dev/null || true
+
+# Делаем команды исполняемыми
+chmod +x "${COMMANDS_DIR}/wp-new"
+chmod +x "${COMMANDS_DIR}/wp-del"
+chmod +x "${COMMANDS_DIR}/wp-help"
+chmod +x "${COMMANDS_DIR}/wp-plugins"
+
+# Проверяем, что ${COMMANDS_DIR} в PATH
+if [[ ":${PATH}:" != *":${COMMANDS_DIR}:"* ]]; then
+  log "Добавляю ${COMMANDS_DIR} в PATH"
+  
+  # Определяем shell профиль
+  if [[ "${SHELL}" == *"zsh"* ]]; then
+    PROFILE="${HOME}/.zshrc"
+  elif [[ "${SHELL}" == *"bash"* ]]; then
+    PROFILE="${HOME}/.bashrc"
+  else
+    PROFILE="${HOME}/.profile"
+  fi
+  
+  # Добавляем в профиль
+  if ! grep -q "wp-tools/commands" "${PROFILE}" 2>/dev/null; then
+    echo "" >> "${PROFILE}"
+    echo "# WP Tools" >> "${PROFILE}"
+    echo "export PATH=\"\${PATH}:${COMMANDS_DIR}\"" >> "${PROFILE}"
+    log "Добавлено в ${PROFILE}"
+  else
+    log "PATH уже настроен в ${PROFILE}"
+  fi
+  
+  # Добавляем в текущую сессию
+  export PATH="${PATH}:${COMMANDS_DIR}"
+else
+  log "PATH уже содержит ${COMMANDS_DIR}"
+fi
+
+echo
+ok "Установка завершена!"
+echo
+echo "Доступные команды:"
+echo "  wp-new <project> [Title]  — создать WordPress проект"
+echo "  wp-del <project>          — удалить проект"
+echo "  wp-help [project]         — справка или сводка по проекту"
+echo "  wp-plugins [project]      — управление плагинами"
+echo
+echo "Структура пакета:"
+echo "  ~/Sites/wp-tools/commands/  — исполняемые команды"
+echo "  ~/Sites/wp-tools/plugins/   — конфигурация плагинов"
+echo
+echo "⚠️  ВАЖНО: Для применения изменений PATH выполните:"
+echo "  source ${PROFILE}"
+echo "или перезапустите терминал"
+echo
+echo "После этого команды wp-new, wp-del, wp-help, wp-plugins будут доступны!"
+echo
+echo "Тестирование:"
+echo "  wp-help"

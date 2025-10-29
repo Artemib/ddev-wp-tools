@@ -1,0 +1,22 @@
+# Список плагинов для автоматической установки
+# Формат: plugin-slug (один на строку)
+# Комментарии начинаются с #
+
+# Основные плагины для разработки
+classic-editor
+query-monitor
+
+# SEO и производительность
+# seo-by-rank-math
+# wp-super-cache
+
+# Формы и контакты
+# contact-form-7
+
+# Дополнительные плагины (раскомментируйте при необходимости)
+# elementor
+# woocommerce
+# yoast-seo
+# akismet
+# wordfence
+# updraftplus

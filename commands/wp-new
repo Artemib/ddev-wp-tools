@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Usage: wp-new <project_folder> [Site Title]
+# Example: wp-new spas "SPAS Dev"
+
+set -Eeuo pipefail
+
+PROJECT="${1:?Usage: wp-new <project_folder> [Site Title]}"
+TITLE="${2:-$PROJECT}"
+BASE_DIR="${HOME}/Sites"
+PROJ_DIR="${BASE_DIR}/${PROJECT}"
+
+log() { printf "➡ %s\n" "$*"; }
+ok()  { printf "✓ %s\n" "$*"; }
+err() { printf "✗ %s\n" "$*" >&2; }
+trap 'err "Сбой на шаге. Последняя команда: ${BASH_COMMAND}"; exit 1' ERR
+
+# --- sanitize DB name ---
+PROJECT_TRIMMED="$(printf '%s' "${PROJECT}" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+PROJECT_TRIMMED="$(printf '%s' "${PROJECT_TRIMMED}" | tr -d '\n\r')"
+DBNAME="$(printf '%s' "${PROJECT_TRIMMED}" | LC_CTYPE=C tr -c 'A-Za-z0-9_' '_' )"
+DBNAME="$(printf '%s' "${DBNAME}" | sed -E 's/^_+//; s/_+$//')"
+[ -z "${DBNAME}" ] && DBNAME="wp_local"
+
+LOCALE="ru_RU"
+ADMIN_USER="admin"
+ADMIN_PASS="admin"
+ADMIN_EMAIL="admin@example.com"
+
+# --- guards ---
+if ddev list 2>/dev/null | awk 'NR>1{print $1}' | grep -qx "${PROJECT}"; then
+  err "Проект '${PROJECT}' уже существует в DDEV. Прервано."; exit 2
+fi
+if [ -d "${PROJ_DIR}" ] && [ "$(ls -A "${PROJ_DIR}" 2>/dev/null | wc -l)" -gt 0 ]; then
+  err "Папка '${PROJ_DIR}' уже существует и не пустая. Прервано."; exit 3
+fi
+if [ -d "${PROJ_DIR}/.ddev" ]; then
+  err "В '${PROJ_DIR}' найден существующий DDEV-проект. Прервано."; exit 4
+fi
+
+log "Создаю каталог проекта: ${PROJ_DIR}"
+mkdir -p "${PROJ_DIR}"
+cd "${PROJ_DIR}"
+
+log "Инициализирую DDEV (wordpress, docroot=.)"
+ddev config --project-type=wordpress --docroot=.
+# ВАЖНО: только базовый и wildcard — НИКАКИХ db.* / mail.* в additional_fqdns!
+ddev config --additional-fqdns="${PROJECT}.ddev.site,*.${PROJECT}.ddev.site"
+
+log "Стартую контейнеры"
+ddev start
+
+log "Скачиваю WordPress (${LOCALE})"
+ddev exec env WP_CLI_PHP_ARGS="-d error_reporting=E_ERROR -d display_errors=0" \
+  wp core download --locale="${LOCALE}"
+
+log "Использую стандартную БД 'db' (DDEV по умолчанию)"
+# DDEV автоматически создает и настраивает БД 'db' - используем её
+
+log "Проверяю, установлен ли WP"
+if ddev exec wp core is-installed >/dev/null 2>&1; then
+  ok "WordPress уже установлен (DB: db)"
+else
+  log "Устанавливаю WordPress"
+  ddev exec env WP_CLI_PHP_ARGS="-d error_reporting=E_ERROR -d display_errors=0" \
+    wp core install \
+      --url="https://${PROJECT}.ddev.site" \
+      --title="${TITLE}" \
+      --admin_user="${ADMIN_USER}" \
+      --admin_password="${ADMIN_PASS}" \
+      --admin_email="${ADMIN_EMAIL}" \
+      --locale="${LOCALE}"
+  ok "Установлен WordPress (${LOCALE}), админ: ${ADMIN_USER}/${ADMIN_PASS}"
+fi
+
+log "Подключаю phpMyAdmin add-on (если не подключён)"
+if [ ! -d ".ddev/addons/ddev-phpmyadmin" ]; then
+  ddev add-on get ddev/ddev-phpmyadmin
+fi
+
+log "Перезапускаю проект (для применения phpMyAdmin)"
+ddev restart
+
+echo
+ok "Готово!"
+echo
+ddev describe
+echo
+# Сводка: показываем домены
+printf "%s\n" \
+"Site URL (base):     https://${PROJECT}.ddev.site" \
+"Wildcard works:      https://ANY-SUBDOMAIN.${PROJECT}.ddev.site" \
+"phpMyAdmin:          https://${PROJECT}.ddev.site:8037" \
+"" \
+"Admin:               ${ADMIN_USER} / ${ADMIN_PASS}" \
+"Database name:       db (стандартная DDEV БД)"
